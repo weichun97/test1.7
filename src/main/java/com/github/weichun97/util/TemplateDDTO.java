@@ -58,29 +58,9 @@ public class TemplateDDTO {
         private Double tareWeight;
 
         /**
-         * 总运单号
+         * ULD 的运单信息
          */
-        private Double alwaysTheAwb;
-
-        /**
-         * 装载件数
-         */
-        private Integer loadingNumber;
-
-        /**
-         * 装载分净重
-         */
-        private Double netLoading;
-
-        /**
-         * 运单总件数
-         */
-        private Double totalNumberOfAwb;
-
-        /**
-         * 备注
-         */
-        private String memo;
+        private List<AwbInfoDTO> awbInfoDTOS;
 
         public String getUldNo() {
             return uldNo;
@@ -114,11 +94,49 @@ public class TemplateDDTO {
             this.tareWeight = tareWeight;
         }
 
-        public Double getAlwaysTheAwb() {
+        public List<AwbInfoDTO> getAwbInfoDTOS() {
+            return awbInfoDTOS;
+        }
+
+        public void setAwbInfoDTOS(List<AwbInfoDTO> awbInfoDTOS) {
+            this.awbInfoDTOS = awbInfoDTOS;
+        }
+    }
+
+    /**
+     * 运单号信息
+     */
+    public static class AwbInfoDTO{
+        /**
+         * 总运单号
+         */
+        private String alwaysTheAwb;
+
+        /**
+         * 装载件数
+         */
+        private Integer loadingNumber;
+
+        /**
+         * 装载分净重
+         */
+        private Double netLoading;
+
+        /**
+         * 运单总件数
+         */
+        private Integer totalNumberOfAwb;
+
+        /**
+         * 备注
+         */
+        private String memo;
+
+        public String getAlwaysTheAwb() {
             return alwaysTheAwb;
         }
 
-        public void setAlwaysTheAwb(Double alwaysTheAwb) {
+        public void setAlwaysTheAwb(String alwaysTheAwb) {
             this.alwaysTheAwb = alwaysTheAwb;
         }
 
@@ -138,11 +156,11 @@ public class TemplateDDTO {
             this.netLoading = netLoading;
         }
 
-        public Double getTotalNumberOfAwb() {
+        public Integer getTotalNumberOfAwb() {
             return totalNumberOfAwb;
         }
 
-        public void setTotalNumberOfAwb(Double totalNumberOfAwb) {
+        public void setTotalNumberOfAwb(Integer totalNumberOfAwb) {
             this.totalNumberOfAwb = totalNumberOfAwb;
         }
 

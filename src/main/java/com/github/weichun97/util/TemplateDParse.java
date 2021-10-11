@@ -1,5 +1,7 @@
 package com.github.weichun97.util;
 
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.poi.excel.ExcelUtil;
@@ -16,8 +18,10 @@ import java.util.List;
 import java.util.Locale;
 
 /**
+ * The type Template d parse.
+ *
  * @author chun
- * @date 2021/9/30 11:44
+ * @date 2021 /9/30 11:44
  */
 public class TemplateDParse {
 
@@ -49,7 +53,7 @@ public class TemplateDParse {
     /**
      * 信息的第一行（ULD表头下的一行）
      */
-    private static final int ULD_START_ROW_INDEX = 5;
+    private static final int ULD_START_ROW_INDEX = 4;
 
     /**
      * PACTL 行
@@ -64,10 +68,10 @@ public class TemplateDParse {
     /**
      * 解析模板
      *
-     * @param inputStream
-     * @return
-     * @throws IOException
-     * @throws InvalidFormatException
+     * @param inputStream the input stream
+     * @return template ddto
+     * @throws IOException            the io exception
+     * @throws InvalidFormatException the invalid format exception
      */
     public static TemplateDDTO read(InputStream inputStream) throws IOException, InvalidFormatException {
         TemplateDDTO templateDDTO = new TemplateDDTO();
@@ -95,21 +99,31 @@ public class TemplateDParse {
         Row row = sheet.getRow(ULD_START_ROW_INDEX);
         int length = 0;
         while (!isPactlRow(row)){
-            String uldNo = ExcelUtils.convertCellValueToString(row.getCell(CellReference.convertColStringToIndex("B")));
-            if(StrUtil.isNotBlank(uldNo)){
-                TemplateDDTO.UldInfoDTO uldInfoDTO = new TemplateDDTO.UldInfoDTO();
-                uldInfoDTO.setUldNo(uldNo);
+            if(row != null){
+                if(CollUtil.isNotEmpty(uldInfoDTOS) && isMergeRegionAndBlank(sheet, row.getRowNum(), 0)){
+                    parseAwbs(row, uldInfoDTOS.get(uldInfoDTOS.size() - 1).getAwbInfoDTOS());
+                }
+                else{
+                    String uldNo = ExcelUtils.convertCellValueToString(row.getCell(CellReference.convertColStringToIndex("B")));
+                    if(StrUtil.isNotBlank(uldNo)){
+                        // 初始化 ULD 对象
+                        TemplateDDTO.UldInfoDTO uldInfoDTO = new TemplateDDTO.UldInfoDTO();
+                        List<TemplateDDTO.AwbInfoDTO> awbInfoDTOS = new ArrayList<>();
+                        uldInfoDTO.setAwbInfoDTOS(awbInfoDTOS);
 
-//                uldInfoDTO.setUldWeight();
-//                uldInfoDTO.setTypeVersion();
-//                uldInfoDTO.setTareWeight();
-//                uldInfoDTO.setAlwaysTheAwb();
-//                uldInfoDTO.setLoadingNumber();
-//                uldInfoDTO.setNetLoading();
-//                uldInfoDTO.setTotalNumberOfAwb();
-//                uldInfoDTO.setMemo();
+                        // 解析 ULD 基本信息
+                        uldInfoDTO.setUldNo(uldNo);
+                        String uldWeight = ExcelUtils.convertCellValueToString(row.getCell(CellReference.convertColStringToIndex("C")));
+                        String tareWeight = ExcelUtils.convertCellValueToString(row.getCell(CellReference.convertColStringToIndex("E")));
+                        uldInfoDTO.setUldWeight(!NumberUtil.isNumber(uldWeight) ? null : Double.valueOf(uldWeight));
+                        uldInfoDTO.setTypeVersion(ExcelUtils.convertCellValueToString(row.getCell(CellReference.convertColStringToIndex("D"))));
+                        uldInfoDTO.setTareWeight(!NumberUtil.isNumber(tareWeight) ? null : Double.valueOf(tareWeight));
+                        uldInfoDTOS.add(uldInfoDTO);
 
-                uldInfoDTOS.add(uldInfoDTO);
+                        // 解析 Awb
+                        parseAwbs(row, awbInfoDTOS);
+                    }
+                }
             }
 
             uldTitleNextRow ++;
@@ -121,13 +135,55 @@ public class TemplateDParse {
     }
 
     /**
+     * 解析 ULD 的 AWB
+     * @param row
+     * @param awbInfoDTOS
+     */
+    private static void parseAwbs(Row row, List<TemplateDDTO.AwbInfoDTO> awbInfoDTOS) {
+        if(awbInfoDTOS == null){
+            return;
+        }
+        String awbPrefix = ExcelUtils.convertCellValueToString(row.getCell(CellReference.convertColStringToIndex("F")));
+        String awbNumber = ExcelUtils.convertCellValueToString(row.getCell(CellReference.convertColStringToIndex("G")));
+        if(StrUtil.isNotBlank(awbPrefix) && StrUtil.isNotBlank(awbNumber)){
+            TemplateDDTO.AwbInfoDTO awbInfoDTO = new TemplateDDTO.AwbInfoDTO();
+
+            String loadingNumber = ExcelUtils.convertCellValueToString(row.getCell(CellReference.convertColStringToIndex("H")));
+            String netLoading = ExcelUtils.convertCellValueToString(row.getCell(CellReference.convertColStringToIndex("I")));
+            String totalNumberOfAwb = ExcelUtils.convertCellValueToString(row.getCell(CellReference.convertColStringToIndex("J")));
+
+            awbInfoDTO.setAlwaysTheAwb(awbPrefix + awbNumber);
+            awbInfoDTO.setLoadingNumber(!NumberUtil.isNumber(loadingNumber) ? null : Integer.valueOf(loadingNumber));
+            awbInfoDTO.setNetLoading(!NumberUtil.isNumber(netLoading) ? null : Double.valueOf(netLoading));
+            awbInfoDTO.setTotalNumberOfAwb(!NumberUtil.isNumber(totalNumberOfAwb) ? null : Integer.valueOf(totalNumberOfAwb));
+            awbInfoDTO.setMemo(ExcelUtils.convertCellValueToString(row.getCell(CellReference.convertColStringToIndex("K"))));
+            awbInfoDTOS.add(awbInfoDTO);
+        }
+
+
+
+    }
+
+    /**
+     * 是合并单元格并且无数据
+     *
+     * @param sheet
+     * @param row 行
+     * @param column 列
+     * @return bool
+     */
+    private static boolean isMergeRegionAndBlank(Sheet sheet, int row, int column) {
+        return ExcelUtils.isMergedRegion(sheet, row, column) && StrUtil.isBlank(ExcelUtils.convertCellValueToString(sheet.getRow(row).getCell(column)));
+    }
+
+    /**
      * 是否 PACTL 行
      *
      * @param row
      * @return
      */
     private static boolean isPactlRow(Row row) {
-        return ObjectUtil.equal(PACTL_IDENTIFY, ExcelUtils.convertCellValueToString(row.getCell(ExcelUtil.colNameToIndex(PACTL_COLUMN_STR))));
+        return row != null && ObjectUtil.equal(PACTL_IDENTIFY, ExcelUtils.convertCellValueToString(row.getCell(ExcelUtil.colNameToIndex(PACTL_COLUMN_STR))));
     }
 
     /**
